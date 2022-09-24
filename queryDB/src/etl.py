@@ -38,6 +38,11 @@ def extract_Structured(events, schema):
     else:
         raise Exception("Category field missing value.")
 
+    # parse expenses
+    exp = events['Expenses']
+    exp.replace(',','.') # notion use dot for decimals
+    events['Expenses'] = exp
+
     return events
 
 def extract_Not_Structured(events, schema):

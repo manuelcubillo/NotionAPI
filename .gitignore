@@ -2,3 +2,6 @@
 .history/
 .vscode/
 notion_env/
+*/src/config.cfg
+visualization/
+deploy_lambda.sh
