@@ -3,5 +3,6 @@
 .vscode/
 notion_env/
 */src/config.cfg
+*/src/log.log
 visualization/
 deploy_lambda.sh
