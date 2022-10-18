@@ -7,6 +7,28 @@ import configparser
 from  schema import getSchemaTEST, getSchemaPROv1
 from datetime import datetime
 from pytz import timezone
+import boto3
+from botocore.config import Config
+
+def getKeys():
+
+    # Initialize SSM Client
+    config = Config(
+    retries = {
+        'max_attempts': 10,
+        'mode': 'standard'
+    },
+    region_name = "eu-west-1"
+    )
+    ssm_client = boto3.client('ssm', config = config)
+    # Get the API Key from SSM
+    #ssm_name = os.getenv('SSM_KEY_NAME', '/amplify/AWS_HASH_KEY/YOUR_AMPLIFY_ENVIRONEMT/AMPLIFY_mycoolapi_MY_COOL_API_KEY')
+    notion_endpoint_createPage = ssm_client.get_parameter(Name="notion_endpoint_createPage", WithDecryption=True)['Parameter']['Value']
+    notion_bearer_token = ssm_client.get_parameter(Name="notion_bearer_token", WithDecryption=True)['Parameter']['Value']
+    notion_db_id_pro = ssm_client.get_parameter(Name="notion_db_id_pro", WithDecryption=True)['Parameter']['Value']
+
+    return notion_endpoint_createPage, notion_db_id_pro, notion_bearer_token
+
 
 def extract_Structured(events, schema):
     """
@@ -112,13 +134,10 @@ def load(url, token, body):
 def handler(event, context):
     config = configparser.ConfigParser()
     config.read('config.cfg')
-    
-    flagPro = config.get('DATA','SCHEMA') == 'PRO'
 
-    if flagPro:
-        db_key = config.get('KEYS','DATABASE_ID_PRO')
-    else:
-        db_key = config.get('KEYS','DATABASE_ID_TEST')
+    notion_endpoint_createPage, db_key, notion_bearer_token = getKeys()
+
+    flagPro = config.get('DATA','SCHEMA') == 'PRO'
 
     structuredFlag = event['StructuredData'] == True
 
@@ -128,7 +147,7 @@ def handler(event, context):
         params = extract_Not_Structured(event, config.get('DATA','DATA_SCHEMA'))
 
     body = transform(db_key, params, schemaPro=flagPro)
-    response = load(config.get('URLS','ENDPOINT'), config.get('KEYS','BEARER_TOKEN'), body)
+    response = load(notion_endpoint_createPage, notion_bearer_token, body)
 
     return {
         'statusCode': 200,

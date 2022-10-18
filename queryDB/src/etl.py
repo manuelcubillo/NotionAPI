@@ -12,8 +12,15 @@ from datetime import datetime, date, timedelta
 from pytz import timezone
 from dataclasses import dataclass
 import logging
+import json
+import os
+import urllib
+from urllib import request, parse
+import boto3
+from botocore.config import Config
 
-logging.basicConfig(filename='log.log', encoding='utf-8', filemode="w", level=logging.INFO)
+
+logging.basicConfig(filename='log.log', filemode="w", level=logging.INFO)
 
 @dataclass
 class item:
@@ -36,6 +43,25 @@ class weekReport:
     weekIni : str = ''
     weekEnd : str = ''
     totalAmount : int = 0
+
+def getKeys():
+
+    # Initialize SSM Client
+    config = Config(
+    retries = {
+        'max_attempts': 10,
+        'mode': 'standard'
+    },
+    region_name = "eu-west-1"
+    )
+    ssm_client = boto3.client('ssm', config = config)
+    # Get the API Key from SSM
+    #ssm_name = os.getenv('SSM_KEY_NAME', '/amplify/AWS_HASH_KEY/YOUR_AMPLIFY_ENVIRONEMT/AMPLIFY_mycoolapi_MY_COOL_API_KEY')
+    notion_endpoint_querydb = ssm_client.get_parameter(Name="notion_endpoint_querydb", WithDecryption=True)['Parameter']['Value']
+    notion_bearer_token = ssm_client.get_parameter(Name="notion_bearer_token", WithDecryption=True)['Parameter']['Value']
+
+    return notion_endpoint_querydb, notion_bearer_token
+
 
 def fetch_data(url, token, iniDate, endDate):
     """
@@ -287,10 +313,12 @@ def handler(event, context):
 
     month = event['monthQuery']
 
+    notion_endpoint_querydb, notion_bearer_token = getKeys()
+
     # 0. get date range depeding of the month 
     iniDate, endDate = getDateRange(month)
     # 1. download data from notion DB, for a delimited period of time
-    data = fetch_data(config.get('URLS','ENDPOINT'), config.get('KEYS','BEARER_TOKEN'), iniDate, endDate)
+    data = fetch_data(notion_endpoint_querydb, notion_bearer_token, iniDate, endDate)
     # 2. parse information from db to a item object 
     data, data_formatted = format_data(data)
     # 3. group the data by week to show the results
