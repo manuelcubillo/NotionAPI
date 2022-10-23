@@ -44,21 +44,29 @@ class weekReport:
     weekEnd : str = ''
     totalAmount : int = 0
 
-def getKeys():
+def getKeys(mode, config):
+    
+    notion_endpoint_querydb, notion_bearer_token = "", ""
 
-    # Initialize SSM Client
-    config = Config(
-    retries = {
-        'max_attempts': 10,
-        'mode': 'standard'
-    },
-    region_name = "eu-west-1"
-    )
-    ssm_client = boto3.client('ssm', config = config)
-    # Get the API Key from SSM
-    #ssm_name = os.getenv('SSM_KEY_NAME', '/amplify/AWS_HASH_KEY/YOUR_AMPLIFY_ENVIRONEMT/AMPLIFY_mycoolapi_MY_COOL_API_KEY')
-    notion_endpoint_querydb = ssm_client.get_parameter(Name="notion_endpoint_querydb", WithDecryption=True)['Parameter']['Value']
-    notion_bearer_token = ssm_client.get_parameter(Name="notion_bearer_token", WithDecryption=True)['Parameter']['Value']
+    if mode == 'pro':
+        # Initialize SSM Client
+        config = Config(
+        retries = {
+            'max_attempts': 10,
+            'mode': 'standard'
+        },
+        region_name = "eu-west-1"
+        )
+        ssm_client = boto3.client('ssm', config = config)
+        # Get the API Key from SSM
+        #ssm_name = os.getenv('SSM_KEY_NAME', '/amplify/AWS_HASH_KEY/YOUR_AMPLIFY_ENVIRONEMT/AMPLIFY_mycoolapi_MY_COOL_API_KEY')
+        notion_endpoint_querydb = ssm_client.get_parameter(Name="notion_endpoint_querydb", WithDecryption=True)['Parameter']['Value']
+        notion_bearer_token = ssm_client.get_parameter(Name="notion_bearer_token", WithDecryption=True)['Parameter']['Value']
+
+    else:
+        notion_endpoint_querydb = config['URLS']['ENDPOINT']
+        notion_bearer_token = config['KEYS']['BEARER_TOKEN']
+
 
     return notion_endpoint_querydb, notion_bearer_token
 
@@ -313,7 +321,8 @@ def handler(event, context):
 
     month = event['monthQuery']
 
-    notion_endpoint_querydb, notion_bearer_token = getKeys()
+    mode = 'local' if  event['mode'] == 'local' else 'pro' # select mode of execution. Affect to place where read keys
+    notion_endpoint_querydb, notion_bearer_token = getKeys(mode, config)
 
     # 0. get date range depeding of the month 
     iniDate, endDate = getDateRange(month)
