@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: sam notion api
+  
+Globals:
+  Function:
+    Timeout: 3
+#
+#   lambdas functions
+#
+Resources:
+  queryDBFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Events:
+        querydb:
+          Type: Api
+          Properties:
+            Path: /sam-querydb
+            Method: any
+    Metadata:
+      DockerTag: python3.8
+      DockerContext: ./queryDB
+      Dockerfile: Dockerfile
+      
+  addToDBFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Events:
+        addtodb:
+          Type: Api
+          Properties:
+            Path: /sam-addtodb
+            Method: any
+    Metadata:
+      DockerTag: python3.8
+      DockerContext: ./addToDB
+      Dockerfile: Dockerfile
+
+Outputs:
+  addToDBFunction:
+    Description: "API Gateway endpoint URL for Prod stage for sam-test-querydb function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sam-addtodb/"
+  queryDBFunction:
+    Description: "API Gateway endpoint URL for Prod stage for sam-test-addtodb function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sam-querydb/"
