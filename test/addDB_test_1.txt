@@ -1,0 +1,13 @@
+{
+    "mode" : "pro",
+    "monthQuery": "10",
+    "title": "demoDockerrrrr",
+    "date": "2022-02-15",
+    "T.Sport": "3",
+    "T.Reading": "4",
+    "T.Projects": "5",
+    "T.Learning": "6",
+    "Expenses":"20,1",
+    "Categories": ["Expenses", "Restaurant"],
+    "StructuredData": true
+}

@@ -319,9 +319,15 @@ def handler(event, context):
     config = configparser.ConfigParser()
     config.read('config.cfg')
 
-    month = event['monthQuery']
+    
+    if 'body' in event:
+        payload = json.loads(event['body'])
+    else:
+        payload = event
 
-    mode = 'local' if  event['mode'] == 'local' else 'pro' # select mode of execution. Affect to place where read keys
+    month = payload['monthQuery']
+
+    mode = 'local' if  payload['mode'] == 'local' else 'pro' # select mode of execution. Affect to place where read keys
     notion_endpoint_querydb, notion_bearer_token = getKeys(mode, config)
 
     # 0. get date range depeding of the month 

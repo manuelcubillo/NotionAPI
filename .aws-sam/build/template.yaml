@@ -4,43 +4,72 @@ Description: sam notion api
 Globals:
   Function:
     Timeout: 3
+    MemorySize: 128
 Resources:
   queryDBFunction:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
+      Architectures:
+      - x86_64
       Events:
         querydb:
           Type: Api
           Properties:
             Path: /sam-querydb
             Method: any
-      ImageUri: querydbfunction:python3.8
+      ImageUri: querydbfunction:python3.8-v1
     Metadata:
-      DockerTag: python3.8
+      DockerTag: python3.8-v1
       DockerContext: ./queryDB
       Dockerfile: Dockerfile
   addToDBFunction:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
+      Architectures:
+      - x86_64
       Events:
         addtodb:
           Type: Api
           Properties:
             Path: /sam-addtodb
             Method: any
-      ImageUri: addtodbfunction:python3.8
+      ImageUri: addtodbfunction:python3.8-v1
     Metadata:
-      DockerTag: python3.8
+      DockerTag: python3.8-v1
       DockerContext: ./addToDB
       Dockerfile: Dockerfile
 Outputs:
+  addToDBdApi:
+    Description: API Gateway endpoint URL for Prod stage foraddToDB function
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sam-addtodb/
   addToDBFunction:
     Description: API Gateway endpoint URL for Prod stage for sam-test-querydb function
     Value:
-      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sam-addtodb/
-  queryDBFunction:
-    Description: API Gateway endpoint URL for Prod stage for sam-test-addtodb function  
+      Fn::GetAtt:
+      - addToDBFunction
+      - Arn
+  addToDBFunctionIamRole:
+    Description: Implicit IAM Role created for addToDB function
     Value:
-      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sam-querydb/
+      Fn::GetAtt:
+      - addToDBFunctionRole
+      - Arn
+  queryDBdApi:
+    Description: API Gateway endpoint URL for Prod stage for queryDB function
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/queryDB/
+  queryDBFunction:
+    Description: API Gateway endpoint URL for Prod stage for sam-test-addtodb function
+    Value:
+      Fn::GetAtt:
+      - queryDBFunction
+      - Arn
+  queryDBFunctionIamRole:
+    Description: Implicit IAM Role created for  queryDB function
+    Value:
+      Fn::GetAtt:
+      - addToDBFunctionRole
+      - Arn

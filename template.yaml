@@ -1,10 +1,12 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: sam notion api
   
 Globals:
   Function:
     Timeout: 3
+    MemorySize: 128
+
 #
 #   lambdas functions
 #
@@ -13,6 +15,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
+      Architectures:
+        - x86_64
       Events:
         querydb:
           Type: Api
@@ -20,7 +24,7 @@ Resources:
             Path: /sam-querydb
             Method: any
     Metadata:
-      DockerTag: python3.8
+      DockerTag: python3.8-v1
       DockerContext: ./queryDB
       Dockerfile: Dockerfile
       
@@ -28,21 +32,37 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
+      Architectures:
+        - x86_64
       Events:
         addtodb:
           Type: Api
           Properties:
             Path: /sam-addtodb
-            Method: any
+            Method: any 
     Metadata:
-      DockerTag: python3.8
+      DockerTag: python3.8-v1
       DockerContext: ./addToDB
       Dockerfile: Dockerfile
 
 Outputs:
+
+  addToDBdApi:
+    Description: "API Gateway endpoint URL for Prod stage foraddToDB function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sam-addtodb/"
   addToDBFunction:
     Description: "API Gateway endpoint URL for Prod stage for sam-test-querydb function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sam-addtodb/"
+    Value: !GetAtt addToDBFunction.Arn
+  addToDBFunctionIamRole:
+    Description: "Implicit IAM Role created for addToDB function"
+    Value: !GetAtt addToDBFunctionRole.Arn
+
+  queryDBdApi:
+    Description: "API Gateway endpoint URL for Prod stage for queryDB function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/queryDB/"
   queryDBFunction:
     Description: "API Gateway endpoint URL for Prod stage for sam-test-addtodb function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sam-querydb/"
+    Value: !GetAtt queryDBFunction.Arn
+  queryDBFunctionIamRole:
+    Description: "Implicit IAM Role created for  queryDB function"
+    Value: !GetAtt addToDBFunctionRole.Arn

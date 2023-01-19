@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "sam-notion-app"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-yp851rjcxfwr"
+s3_prefix = "sam-notion-app"
+region = "eu-west-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = ["queryDBFunction=473090859996.dkr.ecr.eu-west-1.amazonaws.com/samnotionappf0dfc661/querydbfunction01ce183erepo", "addToDBFunction=473090859996.dkr.ecr.eu-west-1.amazonaws.com/samnotionappf0dfc661/addtodbfunction8bfa1ad5repo"]

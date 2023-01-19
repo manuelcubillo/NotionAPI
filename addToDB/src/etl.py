@@ -9,23 +9,40 @@ from datetime import datetime
 from pytz import timezone
 import boto3
 from botocore.config import Config
+import logging
+import os
 
-def getKeys():
+logging.basicConfig(filename='log.log', filemode="w", level=logging.DEBUG)
 
-    # Initialize SSM Client
-    config = Config(
-    retries = {
-        'max_attempts': 10,
-        'mode': 'standard'
-    },
-    region_name = "eu-west-1"
-    )
-    ssm_client = boto3.client('ssm', config = config)
-    # Get the API Key from SSM
-    #ssm_name = os.getenv('SSM_KEY_NAME', '/amplify/AWS_HASH_KEY/YOUR_AMPLIFY_ENVIRONEMT/AMPLIFY_mycoolapi_MY_COOL_API_KEY')
-    notion_endpoint_createPage = ssm_client.get_parameter(Name="notion_endpoint_createPage", WithDecryption=True)['Parameter']['Value']
-    notion_bearer_token = ssm_client.get_parameter(Name="notion_bearer_token", WithDecryption=True)['Parameter']['Value']
-    notion_db_id_pro = ssm_client.get_parameter(Name="notion_db_id_pro", WithDecryption=True)['Parameter']['Value']
+
+def getKeys(mode, config):
+
+    notion_endpoint_createPage, notion_bearer_token = "", ""
+
+    if mode == 'pro':
+        logging.debug("Using SSM service to get credentials")
+
+        # Initialize SSM Client
+        config = Config(
+        retries = {
+            'max_attempts': 10,
+            'mode': 'standard'
+        },
+        region_name = "eu-west-1"
+        )
+        ssm_client = boto3.client('ssm', config = config)
+        # Get the API Key from SSM
+        #ssm_name = os.getenv('SSM_KEY_NAME', '/amplify/AWS_HASH_KEY/YOUR_AMPLIFY_ENVIRONEMT/AMPLIFY_mycoolapi_MY_COOL_API_KEY')
+        notion_endpoint_createPage = ssm_client.get_parameter(Name="notion_endpoint_createPage", WithDecryption=True)['Parameter']['Value']
+        notion_bearer_token = ssm_client.get_parameter(Name="notion_bearer_token", WithDecryption=True)['Parameter']['Value']
+        notion_db_id_pro = ssm_client.get_parameter(Name="notion_db_id_pro", WithDecryption=True)['Parameter']['Value']
+
+    else:
+        logging.debug("Using config file to get credentials")
+        notion_endpoint_createPage = config['URLS']['ENDPOINT']
+        notion_bearer_token = config['KEYS']['BEARER_TOKEN']
+        notion_db_id_pro = config['KEYS']['DATABASE_ID_PRO'] 
+
 
     return notion_endpoint_createPage, notion_db_id_pro, notion_bearer_token
 
@@ -71,20 +88,20 @@ def parseDot(events):
     """
     # parse expenses
     exp = events['Expenses']
-    exp.replace(',','.') 
+    exp = exp.replace(',','.') 
     events['Expenses'] = exp
 
     # parse times
     ts = events['T.Sport']
-    ts.replace(',','.') 
+    ts = ts.replace(',','.') 
     events['T.Sports'] = ts
 
     tp = events['T.Projects']
-    tp.replace(',','.') 
+    tp = tp.replace(',','.') 
     events['T.Projects'] = tp
 
     tr = events['T.Reading']
-    tr.replace(',','.') 
+    tr = tr.replace(',','.') 
     events['T.Reading'] = tr
 
     return events
@@ -135,21 +152,34 @@ def handler(event, context):
     config = configparser.ConfigParser()
     config.read('config.cfg')
 
-    notion_endpoint_createPage, db_key, notion_bearer_token = getKeys()
+    print("Event: ", json.dumps(event)) 
+    logging.debug("TEXT LOGGING")
+    
+    if 'body' in event:
+        payload = json.loads(event['body']) # print event
+    else:
+        payload = event
+
+    mode = 'local' if  payload['mode'] == 'local' else 'pro' # select mode of execution. Affect to place where read keys
+
+    notion_endpoint_createPage, db_key, notion_bearer_token = getKeys(mode, config)
 
     flagPro = config.get('DATA','SCHEMA') == 'PRO'
 
-    structuredFlag = event['StructuredData'] == True
+    structuredFlag = payload['StructuredData'] == True
 
     if structuredFlag: 
-        params = extract_Structured(event, config.get('DATA','DATA_SCHEMA'))
+        params = extract_Structured(payload, config.get('DATA','DATA_SCHEMA'))
     else:
-        params = extract_Not_Structured(event, config.get('DATA','DATA_SCHEMA'))
+        params = extract_Not_Structured(payload, config.get('DATA','DATA_SCHEMA'))
 
     body = transform(db_key, params, schemaPro=flagPro)
     response = load(notion_endpoint_createPage, notion_bearer_token, body)
 
     return {
-        'statusCode': 200,
-        'body': response
+        "statusCode": 200,
+        "headers": {
+                "Access-Control-Allow-Origin": os.environ.get('ALLOWED_ORIGINS')
+            },
+        "body":  json.dumps(response)
     }
