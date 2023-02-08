@@ -3,8 +3,8 @@ Transform: AWS::Serverless-2016-10-31
 Description: sam notion api
 Globals:
   Function:
-    Timeout: 3
-    MemorySize: 128
+    Timeout: 12
+    MemorySize: 256
 Resources:
   queryDBFunction:
     Type: AWS::Serverless::Function
@@ -20,9 +20,10 @@ Resources:
             Method: any
       ImageUri: querydbfunction:python3.8-v1
     Metadata:
+      DockerContext: /Users/manuelcubillo/Projects/NotionAPI/queryDB
       DockerTag: python3.8-v1
-      DockerContext: ./queryDB
       Dockerfile: Dockerfile
+      SamResourceId: queryDBFunction
   addToDBFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -35,11 +36,16 @@ Resources:
           Properties:
             Path: /sam-addtodb
             Method: any
+      Policies:
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: queryDBFunction
       ImageUri: addtodbfunction:python3.8-v1
     Metadata:
+      DockerContext: /Users/manuelcubillo/Projects/NotionAPI/addToDB
       DockerTag: python3.8-v1
-      DockerContext: ./addToDB
       Dockerfile: Dockerfile
+      SamResourceId: addToDBFunction
 Outputs:
   addToDBdApi:
     Description: API Gateway endpoint URL for Prod stage foraddToDB function

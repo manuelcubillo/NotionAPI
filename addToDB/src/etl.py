@@ -11,6 +11,10 @@ import boto3
 from botocore.config import Config
 import logging
 import os
+import boto3
+ 
+# Define the client to interact with AWS Lambda
+client = boto3.client('lambda')
 
 logging.basicConfig(filename='log.log', filemode="w", level=logging.DEBUG)
 
@@ -147,13 +151,35 @@ def load(url, token, body):
     dataJson = json.loads(response.data.decode('utf8'))
     return dataJson
 
+def getWeekExpenses():
+    """
+    call lambda to work out the expenses of the current week
+    """
+
+    inputParams = {
+    "mode" : "pro",
+    "monthQuery": "1",
+    "query" : "weekExpenses"
+    }
+
+    print("Calling queryDB lambda function...")
+    response = client.invoke(
+        FunctionName = 'arn:aws:lambda:eu-west-1:473090859996:function:sam-notion-app-queryDBFunction-xGIwS3Yp7xbh',
+        InvocationType = 'RequestResponse',
+        Payload = json.dumps(inputParams)
+    )
+    
+    payload = json.load(response['Payload'])['body']    
+
+    print("Total week expenses", payload)
+
+    return payload
 
 def handler(event, context):
     config = configparser.ConfigParser()
     config.read('config.cfg')
 
     print("Event: ", json.dumps(event)) 
-    logging.debug("TEXT LOGGING")
     
     if 'body' in event:
         payload = json.loads(event['body']) # print event
@@ -176,10 +202,14 @@ def handler(event, context):
     body = transform(db_key, params, schemaPro=flagPro)
     response = load(notion_endpoint_createPage, notion_bearer_token, body)
 
+    print("Entry added to Notion DB")
+    # get total week expenses
+    weekExpenses = getWeekExpenses()
+
     return {
         "statusCode": 200,
         "headers": {
                 "Access-Control-Allow-Origin": os.environ.get('ALLOWED_ORIGINS')
             },
-        "body":  json.dumps(response)
+        "body":  weekExpenses
     }

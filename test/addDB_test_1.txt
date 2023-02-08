@@ -1,6 +1,7 @@
 {
     "mode" : "pro",
-    "monthQuery": "10",
+    "monthQuery": "1",
+    "query" : "weekExpenses",
     "title": "demoDockerrrrr",
     "date": "2022-02-15",
     "T.Sport": "3",
@@ -11,3 +12,4 @@
     "Categories": ["Expenses", "Restaurant"],
     "StructuredData": true
 }
+

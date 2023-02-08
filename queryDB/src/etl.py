@@ -70,7 +70,6 @@ def getKeys(mode, config):
 
     return notion_endpoint_querydb, notion_bearer_token
 
-
 def fetch_data(url, token, iniDate, endDate):
     """
     fetch data from notion db
@@ -79,7 +78,6 @@ def fetch_data(url, token, iniDate, endDate):
     headers = {'Notion-Version': '2021-08-16',
     'Content-Type': 'application/json',
     'Authorization' : 'Bearer {0}'.format(token)}
-
     
     http = urllib3.PoolManager()
     response = http.request('POST',
@@ -88,7 +86,6 @@ def fetch_data(url, token, iniDate, endDate):
                             headers = headers)
 
     dataJson = json.loads(response.data.decode('utf8'))
-    logging.debug(dataJson)
     return dataJson['results']
 
 def get_Date_Filter(iniDate, endDate):
@@ -98,9 +95,12 @@ def get_Date_Filter(iniDate, endDate):
     week_day = endDate.weekday()
     day = endDate.day -1
     toD = endDate.strftime('%Y-%m-%d')
+    fromD = iniDate.strftime('%Y-%m-%d')
 
-    fromD = (endDate - timedelta(days=day)).strftime('%Y-%m-%d') # get month
-    
+    # fromD = (endDate - timedelta(days=day)).strftime('%Y-%m-%d') # get month first day of the month
+
+    print("ini requested to notion: ", fromD)
+    print("end requested to notion: ", toD)
     return str("""{
     "filter": {
           "and": [
@@ -314,12 +314,51 @@ def create_message(m_report):
 
     return msg
 
+def getMonthReport(month, notion_endpoint_querydb, notion_bearer_token):
+    """
+    return a string message with the full month report
+    """
+     # 0. get date range depending of the month 
+    iniDate, endDate = getDateRange(month)
+    # 1. download data from notion DB, for a delimited period of time
+    data = fetch_data(notion_endpoint_querydb, notion_bearer_token, iniDate, endDate)
+    # 2. parse information from db to a item object 
+    data, data_formatted = format_data(data)
+    # 3. group the data by week to show the results
+    m_report = group_by_week(data_formatted, iniDate, endDate)
+    # 4. make a string message from the report
+    msg = create_message(m_report)
+
+    return msg
+
+def getCurrentWeekExpenses(notion_endpoint_querydb, notion_bearer_token):
+    """
+    return number with the total expenses of the current week
+    """
+    # 0. get date range
+    today = datetime.today()
+    numDays = today.isoweekday() - 1
+    fromD = (today - timedelta(days=numDays)) 
+    fromD = datetime(year=fromD.year, month=fromD.month, day=fromD.day, hour=0, minute=0, second=0)
+
+    # 2. query esas fechas
+    data = fetch_data(notion_endpoint_querydb, notion_bearer_token, fromD, today)
+    # 2. parse information from db to a item object 
+    data, data_formatted = format_data(data)
+    print(data_formatted)
+    # 3. sum
+    totalAmount = getExpensesBetweenDays(data_formatted, fromD, today)
+
+    return totalAmount
+
+
 def handler(event, context):
 
     config = configparser.ConfigParser()
     config.read('config.cfg')
+    msg = ""
+    status = 200
 
-    
     if 'body' in event:
         payload = json.loads(event['body'])
     else:
@@ -330,19 +369,26 @@ def handler(event, context):
     mode = 'local' if  payload['mode'] == 'local' else 'pro' # select mode of execution. Affect to place where read keys
     notion_endpoint_querydb, notion_bearer_token = getKeys(mode, config)
 
-    # 0. get date range depeding of the month 
-    iniDate, endDate = getDateRange(month)
-    # 1. download data from notion DB, for a delimited period of time
-    data = fetch_data(notion_endpoint_querydb, notion_bearer_token, iniDate, endDate)
-    # 2. parse information from db to a item object 
-    data, data_formatted = format_data(data)
-    # 3. group the data by week to show the results
-    m_report = group_by_week(data_formatted, iniDate, endDate)
-    # 4. make a string message from the report
-    msg = create_message(m_report)
-    logging.info(msg)
 
-    return {
-        'statusCode': 200,
-        'body': msg
-    }
+    query = payload['query']
+
+    try:
+        # return a full month report in string format
+        if query == 'monthReport':
+            msg = getMonthReport(month, notion_endpoint_querydb, notion_bearer_token)
+
+        # return the sum of total expenses of the current week
+        if query == 'weekExpenses':
+            msg = getCurrentWeekExpenses(notion_endpoint_querydb, notion_bearer_token)
+
+    except:
+        print("Error proccesing request")
+        status = 500
+
+    finally:
+        print("Returning", msg)
+
+        return {
+         'statusCode': status,
+         'body': msg
+         }

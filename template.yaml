@@ -4,8 +4,8 @@ Description: sam notion api
   
 Globals:
   Function:
-    Timeout: 3
-    MemorySize: 128
+    Timeout: 12
+    MemorySize: 256
 
 #
 #   lambdas functions
@@ -40,6 +40,10 @@ Resources:
           Properties:
             Path: /sam-addtodb
             Method: any 
+      Policies: 
+        - LambdaInvokePolicy:
+            FunctionName:
+              !Ref queryDBFunction
     Metadata:
       DockerTag: python3.8-v1
       DockerContext: ./addToDB
