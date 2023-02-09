@@ -13,7 +13,7 @@ AWS SAM is used to deploy all the infrastructure automatically:
 Sending a simple JSON to the gateway, the funtion build a complex body based on Notion DB schema previusly defined. The function is in charge of re-send the request to Notion API.
 
 ### 2. Query DB
-Recibe the date to make the query, and it build the message to send to Notion API. Besides, filter data and create simple reports base on the schema.
+Recive the date to make the query, and it build the message to send to Notion API. Besides, filter data and create simple reports base on the schema.
 
 ### AUTH
 Token security to access through Notion API is store en AWS Secrets Manager
