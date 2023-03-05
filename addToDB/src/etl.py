@@ -194,8 +194,8 @@ def handler(event, context):
    
     if not 'user' in payload:
         return {
-        'statusCode': status,
-        'body': "LOGIN INFO NOT FOUNG"
+        'statusCode': 500,
+        'body': "LOGING INFO NOT FOUNG"
         }
 
     name = payload['user']['name']
