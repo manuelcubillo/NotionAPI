@@ -5,13 +5,16 @@ on:
   push:
     branches: [ auto-deploy ]
 
+env:
+  HOME: /var/tmp
+  
+  
 jobs:
   
   build-deploy:
     
     name: Sam build and deploy to AWS
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4 
@@ -23,7 +26,11 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
+          
+      - run: echo $HOME
+      
       # sam build 
+      
       - run: sam build --debug 
       
       - run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --stack-name sam-notion-api --region eu-west-1 
