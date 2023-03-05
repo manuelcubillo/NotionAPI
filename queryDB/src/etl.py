@@ -379,9 +379,11 @@ def handler(event, context):
 
     name = payload['user']['name']
     token = payload['user']['token']
-    notion_endpoint, db_key, notion_bearer_token = getUserKeys(name, token)
+    db_key, notion_bearer_token = getUserKeys(name, token)
 
-    if notion_endpoint != "" or db_key != "" or notion_bearer_token != "":
+    notion_endpoint_querydb = "https://api.notion.com/v1/databases/" + db_key + "/query"
+
+    if  db_key != "" or notion_bearer_token != "":
 
 
         query = payload['query']

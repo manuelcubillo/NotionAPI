@@ -14,7 +14,6 @@ class User:
     dbID : str = ""
     countReqs : int = 0
     allowed : bool = False
-    notionEndPoint : str = ""
 
     def checkAuth(self, tkn):
         return self.authToken == tkn
@@ -54,7 +53,6 @@ def createUsrFromDB(respone):
     usr.authToken = usr['authToken']
     usr.dbID = usr['dbID']
     usr.allowed = usr['allowed']
-    usr.notionEndPoint = usr['notionEndPoint']
     usr.notionAuth = usr['notionAuth']
     usr.countReqs = usr['countReqs']
     return usr
@@ -72,24 +70,24 @@ def updateUser(user):
 
     return
 
-def getUserKeys(name, token):
+def getUserKeys(name, token, updateCounter = True):
     """
     function that calls the rest of the apis to access
     this function check and validate the user
     if user is right, database id and notion auth is return, otherwise an exception will occurs
     """
-    notionToken, notionEndPoint, dbId = "", "", ""
+    notionToken, dbId = "", ""
 
     usr = getUser(name)
 
     if usr.isAllowed and usr.checkAuth(token):
         notionToken = usr.notionAuth
-        notionEndPoint = usr.notionEndPoint
         dbId = usr.dbID
-        usr.countReqs = usr.countReqs + 1
-        updateUser(usr) # update counter request
+        if updateCounter:
+            usr.countReqs = usr.countReqs + 1
+            updateUser(usr) # update counter request
     else:
         print("The user", name, "with token", token, "is not allowed to use the API. Wrong password or access denied.")
 
 
-    return notionEndPoint, dbId, notionToken
+    return dbId, notionToken

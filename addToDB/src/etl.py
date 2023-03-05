@@ -201,7 +201,8 @@ def handler(event, context):
     name = payload['user']['name']
     token = payload['user']['token']
 
-    notion_endpoint_createPage, db_key, notion_bearer_token = getUserKeys(name, token)
+    notion_endpoint_createPage = "https://api.notion.com/v1/pages"
+    db_key, notion_bearer_token = getUserKeys(name, token)
 
     if notion_endpoint_createPage != "" or db_key != "" or notion_bearer_token != "":
 
