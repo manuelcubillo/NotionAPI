@@ -4,6 +4,8 @@ function to manage different users
 import boto3
 import os
 import json
+from dataclasses import dataclass
+from boto3.dynamodb.conditions import Key, Attr
 
 
 @dataclass
@@ -26,13 +28,16 @@ def getUser(name):
     """
     get the data user from db and return a user object
     """
-
-    dynamodb = boto3.resource('dynamodb')
     usr = User()
 
     try:
+
+        dynamodb = boto3.resource('dynamodb')
+
         # todo check if exits and fetch data from aws
-        usersTable = dynamodb.Table(os.environ.get('NOTION_USERS_TABLE_NAME'))
+        
+        usersTable = dynamodb.Table(os.environ.get('NOTION_USERS_TABLE_NAME')) # type: ignore
+       
         dynamoResponse = usersTable.get_item(Key={'name': name})
         if not 'Item' in dynamoResponse:
                 print('ERROR: No user found', name)
@@ -49,12 +54,12 @@ def getUser(name):
 
 def createUsrFromDB(respone):
     usr = User()
-    usr.name = usr['name']
-    usr.authToken = usr['authToken']
-    usr.dbID = usr['dbID']
-    usr.allowed = usr['allowed']
-    usr.notionAuth = usr['notionAuth']
-    usr.countReqs = usr['countReqs']
+    usr.name = respone['name']
+    usr.authToken = respone['authToken']
+    usr.dbID = respone['dbID']
+    usr.allowed = respone['allowed']
+    usr.notionAuth = respone['notionAuth']
+    usr.countReqs = respone['countReqs']
     return usr
 
 
@@ -62,7 +67,7 @@ def updateUser(user):
     #todo upload / modify user
     try:
         dynamodb = boto3.resource('dynamodb')
-        usersTable = dynamodb.Table(os.environ.get('NOTION_USERS_TABLE_NAME'))
+        usersTable = dynamodb.Table(os.environ.get('NOTION_USERS_TABLE_NAME')) # type: ignore
         usersTable.put_item(Item = user)
     except:
         print("ERROR: error updating data base")

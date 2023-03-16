@@ -20,7 +20,6 @@ import boto3
 from botocore.config import Config
 from users import getUserKeys
 
-
 logging.basicConfig(filename='log.log', filemode="w", level=logging.INFO)
 
 @dataclass
@@ -29,7 +28,7 @@ class item:
     item object in notion DB
     """
     name:str = ""
-    date:datetime = ""
+    date:datetime = None # type: ignore
     expenses:str = ""
     month:str = ""
     year:str = ""
@@ -47,7 +46,7 @@ class weekReport:
 
 def getKeys(mode, config):
     
-    notion_endpoint_querydb, db_key, notion_bearer_token = "", ""
+    notion_endpoint_querydb, db_key, notion_bearer_token = "", "", ""
 
     if mode == 'pro':
         # Initialize SSM Client
