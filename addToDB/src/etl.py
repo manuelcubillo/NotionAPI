@@ -152,7 +152,7 @@ def load(url, token, body):
     dataJson = json.loads(response.data.decode('utf8'))
     return dataJson
 
-def getWeekExpenses():
+def getWeekExpenses(payload):
     """
     call lambda to work out the expenses of the current week
     """
@@ -160,7 +160,11 @@ def getWeekExpenses():
     inputParams = {
     "mode" : "pro",
     "monthQuery": "1",
-    "query" : "weekExpenses"
+    "query" : "weekExpenses",
+    "user" : {
+        "name" : payload['user']['name'],
+        "token" : payload['user']['token']
+    }
     }
 
     print("Calling queryDB lambda function...")
@@ -195,7 +199,7 @@ def handler(event, context):
     if not 'user' in payload:
         return {
         'statusCode': 500,
-        'body': "LOGING INFO NOT FOUNG"
+        'body': "LOGING INFO NOT FOUND"
         }
 
     name = payload['user']['name']
@@ -204,7 +208,7 @@ def handler(event, context):
     notion_endpoint_createPage = "https://api.notion.com/v1/pages"
     db_key, notion_bearer_token = getUserKeys(name, token)
 
-    if notion_endpoint_createPage != "" or db_key != "" or notion_bearer_token != "":
+    if db_key != "" and notion_bearer_token != "":
 
         flagPro = config.get('DATA','SCHEMA') == 'PRO'
 
@@ -220,7 +224,7 @@ def handler(event, context):
 
         print("Entry added to Notion DB")
         # get total week expenses
-        weekExpenses = getWeekExpenses()
+        weekExpenses = getWeekExpenses(payload)
     else:
         weekExpenses =  "Access denied. User, password wrong or access not allowed"
 

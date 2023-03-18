@@ -35,20 +35,25 @@ def getUser(name):
         dynamodb = boto3.resource('dynamodb')
 
         # todo check if exits and fetch data from aws
-        
+        print("Trying to get", name, "from", os.environ.get('NOTION_USERS_TABLE_NAME'))
+
         usersTable = dynamodb.Table(os.environ.get('NOTION_USERS_TABLE_NAME')) # type: ignore
-       
+        if usersTable == None:
+            print("Not table DB found", os.environ.get('NOTION_USERS_TABLE_NAME'))
+
         dynamoResponse = usersTable.get_item(Key={'name': name})
         if not 'Item' in dynamoResponse:
                 print('ERROR: No user found', name)
                 return usr
         
-        print(json.dumps(dynamoResponse))
+        print("dynamoDB answer",dynamoResponse)
+        #print(json.dumps(dynamoResponse))
         response = dynamoResponse['Item']
         usr = createUsrFromDB(response)   
 
-    except:
+    except Exception as err:
         print("A problem fetching user data from cloud occurs")
+        print(err)
 
     return usr
 
@@ -64,7 +69,6 @@ def createUsrFromDB(respone):
 
 
 def updateUser(user):
-    #todo upload / modify user
     try:
         dynamodb = boto3.resource('dynamodb')
         usersTable = dynamodb.Table(os.environ.get('NOTION_USERS_TABLE_NAME')) # type: ignore

@@ -373,16 +373,16 @@ def handler(event, context):
     if not 'user' in payload:
         return {
         'statusCode': status,
-        'body': "LOGIN INFO NOT FOUNG"
+        'body': "LOGIN INFO NOT FOUND"
     }
 
     name = payload['user']['name']
     token = payload['user']['token']
-    db_key, notion_bearer_token = getUserKeys(name, token)
+    db_key, notion_bearer_token = getUserKeys(name, token, updateCounter=False)
 
     notion_endpoint_querydb = "https://api.notion.com/v1/databases/" + db_key + "/query"
 
-    if  db_key != "" or notion_bearer_token != "":
+    if  db_key != "" and notion_bearer_token != "":
 
 
         query = payload['query']
