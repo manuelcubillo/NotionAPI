@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: sam notion api
+Globals:
+  Function:
+    Timeout: 12
+    MemorySize: 256
+    Environment:
+      Variables:
+        NOTION_USERS_TABLE_NAME:
+          Ref: NotionUsersTable
+Resources:
+  NotionUsersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: name
+        AttributeType: S
+      KeySchema:
+      - AttributeName: name
+        KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+  queryDBFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Architectures:
+      - x86_64
+      Events:
+        querydb:
+          Type: Api
+          Properties:
+            Path: /sam-querydb
+            Method: any
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: NotionUsersTable
+      ImageUri: querydbfunction:python3.8-v1
+    Metadata:
+      DockerContext: /Users/manuelcubillo/Projects/NotionAPI
+      DockerTag: python3.8-v1
+      Dockerfile: queryDB/Dockerfile
+      SamResourceId: queryDBFunction
+  addToDBFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Architectures:
+      - x86_64
+      Events:
+        addtodb:
+          Type: Api
+          Properties:
+            Path: /sam-addtodb
+            Method: any
+      Policies:
+      - LambdaInvokePolicy:
+          FunctionName:
+            Ref: queryDBFunction
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: NotionUsersTable
+      ImageUri: addtodbfunction:python3.8-v1
+    Metadata:
+      DockerContext: /Users/manuelcubillo/Projects/NotionAPI
+      DockerTag: python3.8-v1
+      Dockerfile: addToDB/Dockerfile
+      SamResourceId: addToDBFunction
+Outputs:
+  addToDBdApi:
+    Description: API Gateway endpoint URL for Prod stage foraddToDB function
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/sam-addtodb/
+  addToDBFunction:
+    Description: API Gateway endpoint URL for Prod stage for sam-test-querydb function
+    Value:
+      Fn::GetAtt:
+      - addToDBFunction
+      - Arn
+  addToDBFunctionIamRole:
+    Description: Implicit IAM Role created for addToDB function
+    Value:
+      Fn::GetAtt:
+      - addToDBFunctionRole
+      - Arn
+  queryDBdApi:
+    Description: API Gateway endpoint URL for Prod stage for queryDB function
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/queryDB/
+  queryDBFunction:
+    Description: API Gateway endpoint URL for Prod stage for sam-test-addtodb function
+    Value:
+      Fn::GetAtt:
+      - queryDBFunction
+      - Arn
+  queryDBFunctionIamRole:
+    Description: Implicit IAM Role created for  queryDB function
+    Value:
+      Fn::GetAtt:
+      - addToDBFunctionRole
+      - Arn

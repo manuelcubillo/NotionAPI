@@ -50,7 +50,7 @@ Resources:
             TableName: !Ref NotionUsersTable
     Metadata:
       DockerTag: python3.8-v1
-      DockerContext: /
+      DockerContext: .
       Dockerfile: queryDB/Dockerfile
       
   addToDBFunction:
@@ -73,7 +73,7 @@ Resources:
             TableName: !Ref NotionUsersTable
     Metadata:
       DockerTag: python3.8-v1
-      DockerContext: /
+      DockerContext: .
       Dockerfile: addToDB/Dockerfile
 
 Outputs:
