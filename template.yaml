@@ -6,11 +6,33 @@ Globals:
   Function:
     Timeout: 12
     MemorySize: 256
+    Environment:
+      Variables:
+        NOTION_USERS_TABLE_NAME: !Ref NotionUsersTable
 
 #
 #   lambdas functions
 #
 Resources:
+
+#
+# dynamoDB
+#
+
+  NotionUsersTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      UpdateReplacePolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: name
+            AttributeType: S
+        KeySchema:
+          - AttributeName: name
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+       
+
   queryDBFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -23,10 +45,13 @@ Resources:
           Properties:
             Path: /sam-querydb
             Method: any
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NotionUsersTable
     Metadata:
       DockerTag: python3.8-v1
-      DockerContext: ./queryDB
-      Dockerfile: Dockerfile
+      DockerContext: .
+      Dockerfile: queryDB/Dockerfile
       
   addToDBFunction:
     Type: AWS::Serverless::Function
@@ -44,10 +69,12 @@ Resources:
         - LambdaInvokePolicy:
             FunctionName:
               !Ref queryDBFunction
+        - DynamoDBCrudPolicy:
+            TableName: !Ref NotionUsersTable
     Metadata:
       DockerTag: python3.8-v1
-      DockerContext: ./addToDB
-      Dockerfile: Dockerfile
+      DockerContext: .
+      Dockerfile: addToDB/Dockerfile
 
 Outputs:
 

@@ -12,7 +12,8 @@ from botocore.config import Config
 import logging
 import os
 import boto3
- 
+from users import getUserKeys
+
 # Define the client to interact with AWS Lambda
 client = boto3.client('lambda')
 
@@ -151,7 +152,7 @@ def load(url, token, body):
     dataJson = json.loads(response.data.decode('utf8'))
     return dataJson
 
-def getWeekExpenses():
+def getWeekExpenses(payload):
     """
     call lambda to work out the expenses of the current week
     """
@@ -159,7 +160,11 @@ def getWeekExpenses():
     inputParams = {
     "mode" : "pro",
     "monthQuery": "1",
-    "query" : "weekExpenses"
+    "query" : "weekExpenses",
+    "user" : {
+        "name" : payload['user']['name'],
+        "token" : payload['user']['token']
+    }
     }
 
     print("Calling queryDB lambda function...")
@@ -178,6 +183,7 @@ def getWeekExpenses():
 def handler(event, context):
     config = configparser.ConfigParser()
     config.read('config.cfg')
+    weekExpenses = ""
 
     print("Event: ", json.dumps(event)) 
     
@@ -188,23 +194,40 @@ def handler(event, context):
 
     mode = 'local' if  payload['mode'] == 'local' else 'pro' # select mode of execution. Affect to place where read keys
 
-    notion_endpoint_createPage, db_key, notion_bearer_token = getKeys(mode, config)
+    #notion_endpoint_createPage, db_key, notion_bearer_token = getKeys(mode, config)
+   
+    if not 'user' in payload:
+        return {
+        'statusCode': 500,
+        'body': "LOGING INFO NOT FOUND"
+        }
 
-    flagPro = config.get('DATA','SCHEMA') == 'PRO'
+    name = payload['user']['name']
+    token = payload['user']['token']
 
-    structuredFlag = payload['StructuredData'] == True
+    notion_endpoint_createPage = "https://api.notion.com/v1/pages"
+    db_key, notion_bearer_token = getUserKeys(name, token)
 
-    if structuredFlag: 
-        params = extract_Structured(payload, config.get('DATA','DATA_SCHEMA'))
+    if db_key != "" and notion_bearer_token != "":
+
+        flagPro = config.get('DATA','SCHEMA') == 'PRO'
+
+        structuredFlag = payload['StructuredData'] == True
+
+        if structuredFlag: 
+            params = extract_Structured(payload, config.get('DATA','DATA_SCHEMA'))
+        else:
+            params = extract_Not_Structured(payload, config.get('DATA','DATA_SCHEMA'))
+
+        body = transform(db_key, params, schemaPro=flagPro)
+        response = load(notion_endpoint_createPage, notion_bearer_token, body)
+
+        print("Entry added to Notion DB")
+        # get total week expenses
+        weekExpenses = getWeekExpenses(payload)
     else:
-        params = extract_Not_Structured(payload, config.get('DATA','DATA_SCHEMA'))
+        weekExpenses =  "Access denied. User, password wrong or access not allowed"
 
-    body = transform(db_key, params, schemaPro=flagPro)
-    response = load(notion_endpoint_createPage, notion_bearer_token, body)
-
-    print("Entry added to Notion DB")
-    # get total week expenses
-    weekExpenses = getWeekExpenses()
 
     return {
         "statusCode": 200,

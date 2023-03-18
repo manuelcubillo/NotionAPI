@@ -18,7 +18,7 @@ import urllib
 from urllib import request, parse
 import boto3
 from botocore.config import Config
-
+from users import getUserKeys
 
 logging.basicConfig(filename='log.log', filemode="w", level=logging.INFO)
 
@@ -28,7 +28,7 @@ class item:
     item object in notion DB
     """
     name:str = ""
-    date:datetime = ""
+    date:datetime = None # type: ignore
     expenses:str = ""
     month:str = ""
     year:str = ""
@@ -46,7 +46,7 @@ class weekReport:
 
 def getKeys(mode, config):
     
-    notion_endpoint_querydb, notion_bearer_token = "", ""
+    notion_endpoint_querydb, db_key, notion_bearer_token = "", "", ""
 
     if mode == 'pro':
         # Initialize SSM Client
@@ -68,7 +68,7 @@ def getKeys(mode, config):
         notion_bearer_token = config['KEYS']['BEARER_TOKEN']
 
 
-    return notion_endpoint_querydb, notion_bearer_token
+    return notion_endpoint_querydb, db_key,  notion_bearer_token
 
 def fetch_data(url, token, iniDate, endDate):
     """
@@ -367,28 +367,43 @@ def handler(event, context):
     month = payload['monthQuery']
 
     mode = 'local' if  payload['mode'] == 'local' else 'pro' # select mode of execution. Affect to place where read keys
-    notion_endpoint_querydb, notion_bearer_token = getKeys(mode, config)
+    #notion_endpoint, db_key, notion_bearer_token = getKeys(mode, config)
 
 
-    query = payload['query']
-
-    try:
-        # return a full month report in string format
-        if query == 'monthReport':
-            msg = getMonthReport(month, notion_endpoint_querydb, notion_bearer_token)
-
-        # return the sum of total expenses of the current week
-        if query == 'weekExpenses':
-            msg = getCurrentWeekExpenses(notion_endpoint_querydb, notion_bearer_token)
-
-    except:
-        print("Error proccesing request")
-        status = 500
-
-    finally:
-        print("Returning", msg)
-
+    if not 'user' in payload:
         return {
-         'statusCode': status,
-         'body': msg
-         }
+        'statusCode': status,
+        'body': "LOGIN INFO NOT FOUND"
+    }
+
+    name = payload['user']['name']
+    token = payload['user']['token']
+    db_key, notion_bearer_token = getUserKeys(name, token, updateCounter=False)
+
+    notion_endpoint_querydb = "https://api.notion.com/v1/databases/" + db_key + "/query"
+
+    if  db_key != "" and notion_bearer_token != "":
+
+
+        query = payload['query']
+
+        try:
+            # return a full month report in string format
+            if query == 'monthReport':
+                msg = getMonthReport(month, notion_endpoint_querydb, notion_bearer_token)
+
+            # return the sum of total expenses of the current week
+            if query == 'weekExpenses':
+                msg = getCurrentWeekExpenses(notion_endpoint_querydb, notion_bearer_token)
+
+        except:
+            print("Error proccesing request")
+            status = 500
+
+        finally:
+            print("Returning", msg)
+
+    return {
+        'statusCode': status,
+        'body': msg
+    }
