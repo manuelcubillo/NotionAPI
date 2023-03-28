@@ -351,6 +351,37 @@ def getCurrentWeekExpenses(notion_endpoint_querydb, notion_bearer_token):
 
     return totalAmount
 
+def getWeekMonthExpenses(notion_endpoint_querydb, notion_bearer_token):
+    """
+    return number with the total expenses of the current week and the total expenses of the current month
+    """
+    # 0. get date range
+    # 0.1 date range for the month
+    today = datetime.today()
+    fromD_month = (today - timedelta(days=(today.day - 1))) # minus 1 due to the minimum value has to be 1 
+    fromD_month = datetime(year=fromD_month.year, month=fromD_month.month, day=fromD_month.day, hour=0, minute=0, second=0)
+
+    # 0.2 date range for the week
+    numDays = today.isoweekday() - 1
+    fromD_week = (today - timedelta(days=numDays)) 
+    fromD_week = datetime(year=fromD_week.year, month=fromD_week.month, day=fromD_week.day, hour=0, minute=0, second=0)
+
+
+    # 2. query esas fechas
+    data = fetch_data(notion_endpoint_querydb, notion_bearer_token, fromD_month, today)
+    # 2. parse information from db to a item object 
+    data, data_formatted = format_data(data)
+    print(data_formatted)
+    # 3. sum
+    totalAmount_month = getExpensesBetweenDays(data_formatted, fromD_month, today)
+    totalAmount_week = getExpensesBetweenDays(data_formatted, fromD_week, today)
+    
+    balance = { 
+        "month" : totalAmount_month,
+        "week" : totalAmount_week
+    }
+
+    return json.dumps(balance)
 
 def handler(event, context):
 
@@ -395,6 +426,11 @@ def handler(event, context):
             # return the sum of total expenses of the current week
             if query == 'weekExpenses':
                 msg = getCurrentWeekExpenses(notion_endpoint_querydb, notion_bearer_token)
+
+            # return the sum of total expenses of the current week and the sum of the current month
+            if query == 'weekMonthTotals':
+                msg = getWeekMonthExpenses(notion_endpoint_querydb, notion_bearer_token)
+
 
         except:
             print("Error proccesing request")
