@@ -1,0 +1,11 @@
+{
+    "mode" : "pro",
+    "monthQuery": "4",
+    "query" : "categoryMonthReport",
+    "categoryList": ["Expenses", "Restaurant"],
+    "StructuredData": true,
+    "user" : {
+		"name" : "mcubillo",
+		"token" : "1234"
+	}
+}

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from multiprocessing import Event
 from sqlite3 import Timestamp
@@ -30,6 +30,7 @@ class item:
     name:str = ""
     date:datetime = None # type: ignore
     expenses:str = ""
+    categories:list = field(default_factory=list) 
     month:str = ""
     year:str = ""
     day:str = ""
@@ -70,18 +71,18 @@ def getKeys(mode, config):
 
     return notion_endpoint_querydb, db_key,  notion_bearer_token
 
-def fetch_data(url, token, iniDate, endDate):
+def fetch_data(iniDate, endDate):
     """
     fetch data from notion db
     """
 
     headers = {'Notion-Version': '2021-08-16',
     'Content-Type': 'application/json',
-    'Authorization' : 'Bearer {0}'.format(token)}
+    'Authorization' : 'Bearer {0}'.format(notion_bearer_token)}
     
     http = urllib3.PoolManager()
     response = http.request('POST',
-                            url,
+                            notion_endpoint_querydb,
                             body = get_Date_Filter(iniDate, endDate),
                             headers = headers)
 
@@ -135,6 +136,12 @@ def format_data(data):
         i.expenses = d['properties']['Expenses']['number']
         dateParts = d['properties']['date']['date']['start'].split('-')
         
+        tagList = []
+        for tagComplete in d['properties']['Tag']['multi_select']:
+            tagList.append(tagComplete['name'])
+
+        i.categories = tagList
+
         if len(dateParts) < 2: # if there is not date, skip this data
             continue
 
@@ -147,6 +154,31 @@ def format_data(data):
         
 
     return data, new_format
+
+def group_by_category(data_formatted , categoryList, obj):
+    """
+    given a formatted data and a list of categories, group the data by category and calculate the sum
+    Args:
+        data_formatted (_type_): _description_
+        categoryList (_type_): _description_
+    """
+    res_cat = []
+    res_sum = []
+    for cat in categoryList :
+        categorySum = 0
+        for row in data_formatted:
+            if cat in row.categories:
+                categorySum += row.expenses
+        #end category
+        res_cat.append(cat)
+        res_sum.append(categorySum)
+        obj[cat] = categorySum
+
+
+    print("returning categories list ", res_cat)
+    print("returning sum list ",res_sum)
+
+    return obj
 
 def group_by_week(data_formatted, iniDate, endDate):
     """
@@ -314,14 +346,14 @@ def create_message(m_report):
 
     return msg
 
-def getMonthReport(month, notion_endpoint_querydb, notion_bearer_token):
+def getMonthReport(month):
     """
     return a string message with the full month report
     """
      # 0. get date range depending of the month 
     iniDate, endDate = getDateRange(month)
     # 1. download data from notion DB, for a delimited period of time
-    data = fetch_data(notion_endpoint_querydb, notion_bearer_token, iniDate, endDate)
+    data = fetch_data(iniDate, endDate)
     # 2. parse information from db to a item object 
     data, data_formatted = format_data(data)
     # 3. group the data by week to show the results
@@ -331,7 +363,7 @@ def getMonthReport(month, notion_endpoint_querydb, notion_bearer_token):
 
     return msg
 
-def getCurrentWeekExpenses(notion_endpoint_querydb, notion_bearer_token):
+def getCurrentWeekExpenses():
     """
     return number with the total expenses of the current week
     """
@@ -342,7 +374,7 @@ def getCurrentWeekExpenses(notion_endpoint_querydb, notion_bearer_token):
     fromD = datetime(year=fromD.year, month=fromD.month, day=fromD.day, hour=0, minute=0, second=0)
 
     # 2. query esas fechas
-    data = fetch_data(notion_endpoint_querydb, notion_bearer_token, fromD, today)
+    data = fetch_data(fromD, today)
     # 2. parse information from db to a item object 
     data, data_formatted = format_data(data)
     print(data_formatted)
@@ -351,7 +383,7 @@ def getCurrentWeekExpenses(notion_endpoint_querydb, notion_bearer_token):
 
     return totalAmount
 
-def getWeekMonthExpenses(notion_endpoint_querydb, notion_bearer_token):
+def getWeekMonthExpenses():
     """
     return number with the total expenses of the current week and the total expenses of the current month
     """
@@ -368,7 +400,7 @@ def getWeekMonthExpenses(notion_endpoint_querydb, notion_bearer_token):
 
 
     # 2. query esas fechas
-    data = fetch_data(notion_endpoint_querydb, notion_bearer_token, fromD_month, today)
+    data = fetch_data(fromD_month, today)
     # 2. parse information from db to a item object 
     data, data_formatted = format_data(data)
     print(data_formatted)
@@ -382,6 +414,30 @@ def getWeekMonthExpenses(notion_endpoint_querydb, notion_bearer_token):
     }
 
     return json.dumps(balance)
+
+def getCategoryMonthReport(month, categoryList):
+    """
+    return a string message with the full month report
+    """
+    print("Starting function getCategoryMonthReport")
+     # 0. get date range depending of the month 
+    iniDate, endDate = getDateRange(month)
+    # 1. download data from notion DB, for a delimited period of time
+    data = fetch_data(iniDate, endDate)
+    # 2. parse information from db to a item object 
+    data, data_formatted = format_data(data)
+    # 3. group the data by week to show the results
+    print("category list received", categoryList)
+    print("data", data_formatted)
+
+    obj = {
+        'month' : month
+    }
+
+    obj = group_by_category(data_formatted, categoryList, obj)
+
+    
+    return json.dumps(obj)
 
 def handler(event, context):
 
@@ -409,32 +465,40 @@ def handler(event, context):
 
     name = payload['user']['name']
     token = payload['user']['token']
+    global notion_bearer_token
     db_key, notion_bearer_token = getUserKeys(name, token, updateCounter=False)
 
+    global notion_endpoint_querydb 
     notion_endpoint_querydb = "https://api.notion.com/v1/databases/" + db_key + "/query"
+
 
     if  db_key != "" and notion_bearer_token != "":
 
 
         query = payload['query']
-
+        print("function requested", query)
         try:
-            # return a full month report in string format
+            # return a full month report in string format grouped by week
             if query == 'monthReport':
-                msg = getMonthReport(month, notion_endpoint_querydb, notion_bearer_token)
+                msg = getMonthReport(month)
+
+            # return a full month report in string format grouped by a given category list
+            if query == 'categoryMonthReport':
+                msg = getCategoryMonthReport(month, payload['categoryList'])
 
             # return the sum of total expenses of the current week
             if query == 'weekExpenses':
-                msg = getCurrentWeekExpenses(notion_endpoint_querydb, notion_bearer_token)
+                msg = getCurrentWeekExpenses()
 
             # return the sum of total expenses of the current week and the sum of the current month
             if query == 'weekMonthTotals':
-                msg = getWeekMonthExpenses(notion_endpoint_querydb, notion_bearer_token)
+                msg = getWeekMonthExpenses()
 
 
-        except:
+        except Exception as e:
             print("Error proccesing request")
             status = 500
+            msg = str(e)
 
         finally:
             print("Returning", msg)
